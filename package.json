@@ -1,0 +1,12 @@
+{
+  "name": "crediupi",
+  "version": "1.0.0",
+  "description": "Mock frontend for CrediUPI wallet",
+  "scripts": {
+    "start": "npx http-server -c-1 -a localhost -p 3000",
+    "test": "echo \"No tests specified\" && exit 0"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}

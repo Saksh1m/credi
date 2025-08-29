@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CrediUPI</title>
+  <link rel="icon" href="assets/favicon.ico" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="h-full bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-[inter]">
+  <div id="app" class="h-full"></div>
+  <div id="toastContainer" class="fixed top-4 left-1/2 -translate-x-1/2 space-y-2 z-50 pointer-events-none" aria-live="polite"></div>
+
+  <!-- Payment Confirmation Modal -->
+  <div id="paymentModal" class="fixed inset-0 hidden items-end md:items-center justify-center bg-black/40 backdrop-blur-sm z-40" role="dialog" aria-modal="true">
+    <div class="bg-white dark:bg-gray-800 w-full md:max-w-md rounded-t-2xl md:rounded-2xl p-4 shadow-lg">
+      <h2 class="text-lg font-bold mb-2">Confirm Payment</h2>
+      <div id="paymentDetails" class="text-sm space-y-1"></div>
+      <div class="flex justify-end mt-4 space-x-2">
+        <button id="cancelPayment" class="px-4 py-2 rounded bg-gray-200 dark:bg-gray-700">Cancel</button>
+        <button id="confirmPayment" class="px-4 py-2 rounded bg-indigo-600 text-white">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- EMI Conversion Modal -->
+  <div id="emiModal" class="fixed inset-0 hidden items-center justify-center bg-black/40 backdrop-blur-sm z-40" role="dialog" aria-modal="true">
+    <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl w-80 shadow-lg">
+      <h2 class="text-lg font-bold mb-2">Convert to EMI</h2>
+      <label class="block mb-2">Months
+        <select id="emiMonths" class="w-full p-2 border rounded bg-white dark:bg-gray-700">
+          <option value="3">3</option>
+          <option value="6">6</option>
+          <option value="9">9</option>
+          <option value="12">12</option>
+        </select>
+      </label>
+      <div class="flex justify-end mt-4 space-x-2">
+        <button id="cancelEmi" class="px-4 py-2 rounded bg-gray-200 dark:bg-gray-700">Cancel</button>
+        <button id="confirmEmi" class="px-4 py-2 rounded bg-indigo-600 text-white">Convert</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
