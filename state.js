@@ -13,9 +13,13 @@ export const state = {
   tier: 'Silver',
   autoPay: false,
   tab: 'home',
+  homeView: 'main',
   dueDate: null,
   dark: false,
-  loading: false
+  loading: false,
+  contactsAccess: false,
+  contacts: ['Alice', 'Bob', 'Charlie', 'David'],
+  billTab: 'popular',
 };
 
 export function updateTier() {
