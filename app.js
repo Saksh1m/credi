@@ -1,4 +1,4 @@
-import { state, updateTier, calculateMinDue } from './state.js';
+import { state, updateTier} from './state.js';
 
 let currentPayment = null;
 let currentEmiIndex = null;
@@ -158,9 +158,7 @@ function renderMain(app) {
         <button data-tab="home" class="tabBtn flex-1 flex flex-col items-center py-1 rounded-2xl ${state.tab==='home'?active:''}">
           <i data-lucide="home" class="mb-0.5"></i><span class="text-xs">Home</span>
         </button>
-        <button data-tab="pay" class="tabBtn flex-1 flex flex-col items-center py-1 rounded-2xl ${state.tab==='pay'?active:''}">
-          <i data-lucide="send" class="mb-0.5"></i><span class="text-xs">Pay</span>
-        </button>
+       
         <button data-tab="repay" class="tabBtn flex-1 flex flex-col items-center py-1 rounded-2xl ${state.tab==='repay'?active:''}">
           <i data-lucide="wallet" class="mb-0.5"></i><span class="text-xs">Repay</span>
         </button>
@@ -193,10 +191,39 @@ function renderTab() {
       document.querySelectorAll('[data-emi]').forEach(btn => {
         btn.onclick = () => { currentEmiIndex = parseInt(btn.dataset.emi); showEmiModal(); };
       });
-      break;
-    case 'pay':
-      content.innerHTML = renderPay();
-      setupPayForm();
+
+      if (!state.loading) {
+        document.querySelectorAll('[data-emi]').forEach(btn => {
+          btn.onclick = () => {
+            currentEmiIndex = parseInt(btn.dataset.emi);
+            showEmiModal();
+          };
+        });
+      const payContainer = document.getElementById('payFormContainer');
+        const sendBtn = document.getElementById('sendMoneyBtn');
+        if (sendBtn && payContainer) {
+          sendBtn.onclick = () => {
+            payContainer.innerHTML = renderPay();
+            setupPayForm();
+            const close = document.createElement('button');
+            close.id = 'closePayForm';
+            close.textContent = 'Close';
+            close.className = 'mt-2 w-full py-2 bg-gray-200 dark:bg-gray-700 rounded';
+            close.onclick = () => {
+              payContainer.classList.add('hidden');
+              payContainer.innerHTML = '';
+            };
+            payContainer.appendChild(close);
+            payContainer.classList.remove('hidden');
+          };
+        }
+        const scanBtn = document.getElementById('scanQrBtn');
+        if (scanBtn) scanBtn.onclick = () => showToast('Scan feature coming soon');
+        const rechargeBtn = document.getElementById('rechargeBtn');
+        if (rechargeBtn) rechargeBtn.onclick = () => showToast('Recharge feature coming soon');
+        const billPayBtn = document.getElementById('billPayBtn');
+        if (billPayBtn) billPayBtn.onclick = () => showToast('Bill pay feature coming soon');
+      }
       break;
     case 'repay':
       content.innerHTML = renderRepay();
@@ -251,35 +278,62 @@ function renderHome() {
         </div>
       </div>`;
   }
-  const minDue = calculateMinDue();
+  const used = state.creditLimit - state.available;
+  const usedPercent = state.creditLimit ? Math.round((used / state.creditLimit) * 100) : 0;
   const txHtml = state.transactions.map((t,i) => `
     <div class="p-3 mb-2 rounded-2xl border border-gray-200 dark:border-gray-700">
       <div class="flex justify-between">
         <span>${t.type === 'repay' ? 'Repayment' : 'Paid to ' + t.upi}</span>
-        <span>₹${t.amount + (t.fee||0)}</span>
+        <span>₹${t.amount}</span>
       </div>
-      <div class="text-xs">${t.date}${t.fee?` | Fee ₹${t.fee}`:''}${t.emi?` | EMI ${t.emi}m`:''}</div>
+      <div class="text-xs">${t.date}${t.emi?` | EMI ${t.emi}m`:''}</div>
       ${t.type === 'spend' && !t.emi ? `<button data-emi="${i}" class="text-indigo-600 text-xs mt-1 underline">Convert to EMI</button>`:''}
     </div>`).join('');
   return `
     <div class="space-y-4">
+      <div class="grid grid-cols-2 gap-4">
+        <button id="scanQrBtn" class="p-4 rounded-2xl shadow bg-white/70 dark:bg-gray-800/70 backdrop-blur flex flex-col items-center">
+          <i data-lucide="scan" class="mb-1"></i>
+          <span class="text-sm font-medium">Scan QR</span>
+          <span class="text-xs">Pay merchants</span>
+        </button>
+        <button id="sendMoneyBtn" class="p-4 rounded-2xl shadow bg-white/70 dark:bg-gray-800/70 backdrop-blur flex flex-col items-center">
+          <i data-lucide="send" class="mb-1"></i>
+          <span class="text-sm font-medium">Send Money</span>
+          <span class="text-xs">UPI transfer</span>
+        </button>
+        <button id="rechargeBtn" class="p-4 rounded-2xl shadow bg-white/70 dark:bg-gray-800/70 backdrop-blur flex flex-col items-center">
+          <i data-lucide="smartphone" class="mb-1"></i>
+          <span class="text-sm font-medium">Recharge</span>
+          <span class="text-xs">Mobile & DTH</span>
+        </button>
+        <button id="billPayBtn" class="p-4 rounded-2xl shadow bg-white/70 dark:bg-gray-800/70 backdrop-blur flex flex-col items-center">
+          <i data-lucide="file-text" class="mb-1"></i>
+          <span class="text-sm font-medium">Bill Pay</span>
+          <span class="text-xs">Utilities</span>
+        </button>
+      </div>
       <div class="grid grid-cols-1 gap-4">
         <div class="p-4 rounded-2xl shadow bg-white/70 dark:bg-gray-800/70 backdrop-blur">
-          <p class="text-sm">Available Credit</p>
-          <p class="text-2xl font-bold">₹${state.available}</p>
+          <p class="text-sm mb-1">Credit Usage</p>
+          <div class="flex justify-between text-sm">
+            <span>Available: ₹${state.available}</span>
+            <span>Limit: ₹${state.creditLimit}</span>
+          </div>
+          <div class="w-full h-2 bg-gray-200 rounded mt-2"><div class="h-2 bg-indigo-600 rounded" style="width:${usedPercent}%"></div></div>
+          <p class="text-right text-xs mt-1">${usedPercent}% used</p> 
         </div>
         <div class="p-4 rounded-2xl shadow bg-white/70 dark:bg-gray-800/70 backdrop-blur flex justify-between">
           <div>
             <p class="text-sm">Outstanding</p>
             <p class="text-xl font-bold">₹${state.outstanding}</p>
           </div>
-          <div>
-            <p class="text-sm">Min Due</p>
-            <p class="text-xl font-bold">₹${minDue}</p>
-            <p class="text-xs">Due ${state.dueDate ? state.dueDate.toLocaleDateString() : ''}</p>
+          <div class="text-right text-sm">
+            <p>Due ${state.dueDate ? state.dueDate.toLocaleDateString() : ''}</p>
           </div>
         </div>
       </div>
+      <div id="payFormContainer" class="hidden"></div>
       <div>
         <h3 class="font-bold mb-2">Recent Transactions</h3>
         <div>${txHtml || '<p>No transactions</p>'}</div>
@@ -330,13 +384,12 @@ function setupPayForm() {
 }
 
 function renderRepay() {
-  const minDue = calculateMinDue();
+  
   return `
     <div class="space-y-4">
       <p>Outstanding: ₹${state.outstanding}</p>
       <div class="flex space-x-2">
         <button data-repay="${state.outstanding}" class="repayBtn flex-1 py-2 bg-indigo-600 text-white rounded">Pay Full</button>
-        <button data-repay="${minDue}" class="repayBtn flex-1 py-2 bg-indigo-600 text-white rounded">Pay Min</button>
       </div>
       <div>
         <input id="customRepay" type="number" class="w-full p-2 border rounded mb-2" placeholder="Custom amount" />
@@ -379,16 +432,15 @@ function startPayment() {
   const upi = document.getElementById('upiId').value.trim();
   const amt = parseFloat(document.getElementById('amount').value);
   if (!upi || isNaN(amt)) { showToast('Enter valid details', 'error'); return; }
-  const fee = Math.floor(Math.random() * 16) + 5;
+  
   const multiplier = state.tier === 'Gold' ? 2 : state.tier === 'Platinum' ? 3 : 1;
   const rewards = Math.floor(amt / 100) * multiplier;
-  currentPayment = { upi, amt, fee, rewards };
+  currentPayment = { upi, amt, rewards };
   document.getElementById('paymentDetails').innerHTML = `
     <p>Send to: ${upi}</p>
     <p>Amount: ₹${amt}</p>
-    <p>Fee: ₹${fee}</p>
     <p>Rewards: ${rewards} pts</p>
-    <p>Available After: ₹${state.available - amt - fee}</p>`;
+    <p>Available After: ₹${state.available - amt}</p>`;
   showPaymentModal();
 }
 
@@ -430,16 +482,18 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('cancelPayment').onclick = hidePaymentModal;
   document.getElementById('confirmPayment').onclick = () => {
     if (!currentPayment) return;
-    const total = currentPayment.amt + currentPayment.fee;
+    const total = currentPayment.amt;
     if (total > state.available) { showToast('Insufficient credit', 'error'); hidePaymentModal(); return; }
     state.available -= total;
     state.outstanding += total;
       state.rewards += currentPayment.rewards;
-      updateTier();
-      state.transactions.unshift({ upi: currentPayment.upi, amount: currentPayment.amt, fee: currentPayment.fee, date: new Date().toLocaleString(), type: 'spend', emi: null });
-      hidePaymentModal();
-      showToast('Payment successful', 'success');
-      render();
+    updateTier();
+    state.transactions.unshift({ upi: currentPayment.upi, amount: currentPayment.amt, date: new Date().toLocaleString(), type: 'spend', emi: null });
+    hidePaymentModal();
+    const payContainer = document.getElementById('payFormContainer');
+    if (payContainer) { payContainer.classList.add('hidden'); payContainer.innerHTML = ''; }
+    showToast('Payment successful', 'success');
+    render();
   };
   document.getElementById('cancelEmi').onclick = hideEmiModal;
   document.getElementById('confirmEmi').onclick = () => {

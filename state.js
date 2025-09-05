@@ -25,5 +25,5 @@ export function updateTier() {
 }
 
 export function calculateMinDue() {
-  return Math.max(200, Math.floor(state.outstanding * 0.05));
+  return 0;
 }
