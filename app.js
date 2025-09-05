@@ -26,6 +26,29 @@ function showToast(msg, type = 'neutral') {
   }, 2000);
 }
 
+function showAccessModal(message, confirmText, onConfirm) {
+  const modal = document.getElementById('accessModal');
+  if (!modal) return;
+  document.getElementById('accessMessage').textContent = message;
+  const confirmBtn = document.getElementById('grantAccess');
+  confirmBtn.textContent = confirmText;
+  confirmBtn.onclick = () => { hideAccessModal(); if (onConfirm) onConfirm(); };
+  document.getElementById('denyAccess').onclick = hideAccessModal;
+  modal.classList.remove('hidden');
+  escapeHandler = (e) => { if (e.key === 'Escape') hideAccessModal(); };
+  document.addEventListener('keydown', escapeHandler);
+}
+
+function hideAccessModal() {
+  const modal = document.getElementById('accessModal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  if (escapeHandler) {
+    document.removeEventListener('keydown', escapeHandler);
+    escapeHandler = null;
+  }
+}
+
 function render() {
   const app = document.getElementById('app');
   if (state.step !== 'app') {
@@ -187,43 +210,44 @@ function renderTab() {
   if (!content) return;
   switch (state.tab) {
     case 'home':
-      content.innerHTML = renderHome();
-      document.querySelectorAll('[data-emi]').forEach(btn => {
-        btn.onclick = () => { currentEmiIndex = parseInt(btn.dataset.emi); showEmiModal(); };
-      });
-
-      if (!state.loading) {
+      if (state.homeView === 'main') {
+        content.innerHTML = renderHome();
         document.querySelectorAll('[data-emi]').forEach(btn => {
-          btn.onclick = () => {
-            currentEmiIndex = parseInt(btn.dataset.emi);
-            showEmiModal();
-          };
+        btn.onclick = () => { currentEmiIndex = parseInt(btn.dataset.emi); showEmiModal(); };  
         });
-      const payContainer = document.getElementById('payFormContainer');
+      const scanBtn = document.getElementById('scanQrBtn');
+        if (scanBtn) scanBtn.onclick = () => {
+          showAccessModal('Credi needs camera access. Turn on your camera to scan QR code and make payments.', 'Turn on the camera', () => showToast('Camera access enabled', 'success'));
+        };
         const sendBtn = document.getElementById('sendMoneyBtn');
-        if (sendBtn && payContainer) {
-          sendBtn.onclick = () => {
-            payContainer.innerHTML = renderPay();
-            setupPayForm();
-            const close = document.createElement('button');
-            close.id = 'closePayForm';
-            close.textContent = 'Close';
-            close.className = 'mt-2 w-full py-2 bg-gray-200 dark:bg-gray-700 rounded';
-            close.onclick = () => {
-              payContainer.classList.add('hidden');
-              payContainer.innerHTML = '';
-            };
-            payContainer.appendChild(close);
-            payContainer.classList.remove('hidden');
-          };
-        }
-        const scanBtn = document.getElementById('scanQrBtn');
-        if (scanBtn) scanBtn.onclick = () => showToast('Scan feature coming soon');
-        const rechargeBtn = document.getElementById('rechargeBtn');
-        if (rechargeBtn) rechargeBtn.onclick = () => showToast('Recharge feature coming soon');
+      if (sendBtn) sendBtn.onclick = () => { state.homeView = 'send'; render(); };
+        const passbookBtn = document.getElementById('passbookBtn');
+        if (passbookBtn) passbookBtn.onclick = () => showToast('Passbook feature coming soon');
         const billPayBtn = document.getElementById('billPayBtn');
-        if (billPayBtn) billPayBtn.onclick = () => showToast('Bill pay feature coming soon');
-      }
+        if (billPayBtn) billPayBtn.onclick = () => { state.homeView = 'bills'; render(); };
+      } else if (state.homeView === 'send') {
+        content.innerHTML = renderSend();
+        document.getElementById('backFromSend').onclick = () => { state.homeView = 'main'; render(); };
+        const search = document.getElementById('contactSearch');
+        if (state.contactsAccess) {
+          const update = () => {
+            const q = search.value.toLowerCase();
+            const filtered = state.contacts.filter(c => c.toLowerCase().includes(q));
+            const list = document.getElementById('suggestList');
+            list.innerHTML = filtered.map(n => `<div class="p-2 rounded bg-white/70 dark:bg-gray-800/70">${n}</div>`).join('') || '<p class="text-sm">No results</p>';
+          };
+          update();
+          search.addEventListener('input', update);
+        } else {
+          showAccessModal('Credi needs contacts access. Allow access to search your contacts.', 'Allow', () => { state.contactsAccess = true; render(); });
+        }
+       } else if (state.homeView === 'bills') {
+        content.innerHTML = renderBills();
+        document.getElementById('backFromBills').onclick = () => { state.homeView = 'main'; render(); };
+        document.querySelectorAll('.billTab').forEach(btn => {
+          btn.onclick = () => { state.billTab = btn.dataset.billtab; render(); };
+        });
+      } 
       break;
     case 'repay':
       content.innerHTML = renderRepay();
@@ -302,14 +326,14 @@ function renderHome() {
           <span class="text-sm font-medium">Send Money</span>
           <span class="text-xs">UPI transfer</span>
         </button>
-        <button id="rechargeBtn" class="p-4 rounded-2xl shadow bg-white/70 dark:bg-gray-800/70 backdrop-blur flex flex-col items-center">
-          <i data-lucide="smartphone" class="mb-1"></i>
-          <span class="text-sm font-medium">Recharge</span>
-          <span class="text-xs">Mobile & DTH</span>
+        <button id="passbookBtn" class="p-4 rounded-2xl shadow bg-white/70 dark:bg-gray-800/70 backdrop-blur flex flex-col items-center">
+          <i data-lucide="book-open" class="mb-1"></i>
+          <span class="text-sm font-medium">Passbook</span>
+          <span class="text-xs">Insights</span>
         </button>
         <button id="billPayBtn" class="p-4 rounded-2xl shadow bg-white/70 dark:bg-gray-800/70 backdrop-blur flex flex-col items-center">
           <i data-lucide="file-text" class="mb-1"></i>
-          <span class="text-sm font-medium">Bill Pay</span>
+          <span class="text-sm font-medium">Bills & Recharges</span>
           <span class="text-xs">Utilities</span>
         </button>
       </div>
@@ -333,7 +357,7 @@ function renderHome() {
           </div>
         </div>
       </div>
-      <div id="payFormContainer" class="hidden"></div>
+      
       <div>
         <h3 class="font-bold mb-2">Recent Transactions</h3>
         <div>${txHtml || '<p>No transactions</p>'}</div>
@@ -341,46 +365,42 @@ function renderHome() {
     </div>`;
 }
 
-function renderPay() {
+function renderSend() {
   return `
-    <form id="payForm" class="space-y-4">
-      <div>
-        <label for="upiId" class="block text-sm font-medium">UPI ID</label>
-        <input id="upiId" class="mt-1 w-full p-2 border rounded" placeholder="name@bank" />
-        <p id="upiError" class="mt-1 text-sm text-rose-600 hidden">Enter valid UPI ID</p>
+    <div class="space-y-4">
+      <button id="backFromSend" class="flex items-center text-sm text-indigo-600"><i data-lucide="arrow-left" class="w-4 h-4 mr-1"></i>Back</button>
+      <div class="flex space-x-2">
+        <button class="flex-1 p-3 rounded-2xl shadow bg-white/70 dark:bg-gray-800/70">Self Transfer</button>
+        <button class="flex-1 p-3 rounded-2xl shadow bg-white/70 dark:bg-gray-800/70">Bank Transfer</button>
+        
       </div>
-      <div>
-        <label for="amount" class="block text-sm font-medium">Amount</label>
-        <input id="amount" type="number" class="mt-1 w-full p-2 border rounded" placeholder="Amount" />
+      <input id="contactSearch" class="w-full p-2 border rounded ${state.contactsAccess ? '' : 'opacity-50'}" placeholder="Search contacts" ${state.contactsAccess ? '' : 'disabled'} />
+      <div class="mt-4">
+        <h3 class="font-bold mb-2">Suggestions</h3>
+        <div id="suggestList" class="space-y-2">
+          ${state.contactsAccess ? state.contacts.map(n => `<div class="p-2 rounded bg-white/70 dark:bg-gray-800/70">${n}</div>`).join('') : '<p class="text-sm">Enable contacts access to see suggestions</p>'}
+        </div>
       </div>
-      <button id="payBtn" class="w-full py-2 bg-indigo-600 text-white rounded disabled:opacity-50" disabled>Pay</button>
-    </form>`;
+      </div>`;
 }
 
-function setupPayForm() {
-  const upiInput = document.getElementById('upiId');
-  const amtInput = document.getElementById('amount');
-  const btn = document.getElementById('payBtn');
-  const error = document.getElementById('upiError');
-  const vpaRegex = /^[\w.-]+@[\w.-]+$/;
-  function validate() {
-    const validVpa = vpaRegex.test(upiInput.value.trim());
-    const validAmt = parseFloat(amtInput.value) > 0;
-    if (!validVpa && upiInput.value) {
-      error.classList.remove('hidden');
-      upiInput.classList.add('border-rose-500');
-    } else {
-      error.classList.add('hidden');
-      upiInput.classList.remove('border-rose-500');
-    }
-    btn.disabled = !(validVpa && validAmt);
-  }
-  upiInput.addEventListener('input', validate);
-  amtInput.addEventListener('input', validate);
-  document.getElementById('payForm').addEventListener('submit', (e) => {
-    e.preventDefault();
-    startPayment();
-  });
+function renderBills() {
+  const tabBtn = (id, label) => `<button data-billtab="${id}" class="billTab flex-1 p-2 rounded-2xl ${state.billTab===id?'bg-indigo-600 text-white':'bg-white/70 dark:bg-gray-800/70'}">${label}</button>`;
+  const options = state.billTab === 'popular'
+    ? [ ['zap','Electricity'], ['credit-card','Credit Card Payment'], ['smartphone','Mobile Recharge'], ['flame','Gas Cylinder'] ]
+    : [ ['tv','DTH'], ['wifi','Cable'], ['badge-dollar-sign','Fastag'], ['contactless','NCMC Recharge'] ];
+  const grid = options.map(o => `<div class="p-4 rounded-2xl shadow bg-white/70 dark:bg-gray-800/70 backdrop-blur flex flex-col items-center"><i data-lucide="${o[0]}" class="mb-1"></i><span class="text-sm font-medium text-center">${o[1]}</span></div>`).join('');
+  return `
+    <div class="space-y-4">
+      <button id="backFromBills" class="flex items-center text-sm text-indigo-600"><i data-lucide="arrow-left" class="w-4 h-4 mr-1"></i>Back</button>
+      <div class="flex space-x-2">
+        ${tabBtn('popular','Popular Categories')}
+        ${tabBtn('recharges','Recharges')}
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        ${grid}
+      </div>
+    </div>`;
 }
 
 function renderRepay() {
@@ -490,8 +510,7 @@ window.addEventListener('DOMContentLoaded', () => {
     updateTier();
     state.transactions.unshift({ upi: currentPayment.upi, amount: currentPayment.amt, date: new Date().toLocaleString(), type: 'spend', emi: null });
     hidePaymentModal();
-    const payContainer = document.getElementById('payFormContainer');
-    if (payContainer) { payContainer.classList.add('hidden'); payContainer.innerHTML = ''; }
+    
     showToast('Payment successful', 'success');
     render();
   };
